@@ -97,11 +97,21 @@ public class UserService {
             cacheService.evictUserFromCache(email);
             Authentication authentication =
                     authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(email, password));
-            if (authentication.getAuthorities().stream().noneMatch(grantedAuthority -> grantedAuthority.getAuthority().equals("ROLE_" + type.toUpperCase()))) {
+            boolean isSuperAdmin = authentication.getAuthorities().stream()
+                    .anyMatch(ga -> ga.getAuthority().equals("ROLE_SUPER_ADMIN"));
+            if (!isSuperAdmin && authentication.getAuthorities().stream()
+                    .noneMatch(ga -> ga.getAuthority().equals("ROLE_" + type.toUpperCase()))) {
                 throw new CustomException("Invalid credentials", HttpStatus.FORBIDDEN);
             }
             Optional<OwnUser> optionalUser = userRepository.findByEmailIgnoreCase(email);
             OwnUser user = optionalUser.get();
+            boolean isNonSuperAdmin = user.getRole() != null && !user.getRole().getRoleType().name().equals("ROLE_SUPER_ADMIN");
+            if (isNonSuperAdmin && user.getCompany() != null && user.getCompany().getSubscription() != null) {
+                Date expiryDate = user.getCompany().getSubscription().getExpiryDate();
+                if (expiryDate != null && expiryDate.before(new Date())) {
+                    throw new CustomException("Subscription expired", HttpStatus.FORBIDDEN);
+                }
+            }
             user.setLastLogin(new Date());
             userRepository.save(user);
             return jwtTokenProvider.createToken(email, Collections.singletonList(user.getRole().getRoleType()));
@@ -128,18 +138,7 @@ public class UserService {
     }
 
     public void checkUsageBasedLimit(int newUsersCount) {
-        LicensingState licensingState = licenseService.getLicensingState();
-        if (licensingState.isHasLicense()) {
-            if (userRepository.hasMorePaidUsersThan(licensingState.getUsersCount() - newUsersCount))
-                throw new RuntimeException("Cannot create more users than the license allows: " + licensingState.getUsersCount() + ". Refer to https://github.com/Grashjs/cmms/blob/main/dev-docs/Disable%20users.md");
-        }
-        Integer threshold = usageBasedLicenseLimits.get(LicenseEntitlement.UNLIMITED_USERS);
-        if (!licenseService.hasEntitlement(LicenseEntitlement.UNLIMITED_USERS)
-                && userRepository.hasMorePaidUsersThan(threshold - newUsersCount
-        ))
-            throw new RuntimeException("Cannot create more users than the free license allows: " + threshold + ". " +
-                    "Refer to" +
-                    " https://github.com/Grashjs/cmms/blob/main/dev-docs/Disable%20users.md");
+        // License check disabled
     }
 
     public SignupSuccessResponse<OwnUser> signup(UserSignupRequest userReq) {

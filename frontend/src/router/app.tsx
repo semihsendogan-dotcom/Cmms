@@ -1,7 +1,10 @@
 import { lazy, Suspense } from 'react';
+import { useParams } from 'react-router-dom';
 
 import SuspenseLoader from 'src/components/SuspenseLoader';
 import analyticsRoutes from './analytics';
+import UserFeatureManagement from 'src/components/SuperAdmin/UserFeatureManagement';
+import id from 'date-fns/esm/locale/id/index.js';
 
 const Loader = (Component) => (props) =>
   (
@@ -106,6 +109,19 @@ const Downgrade = Loader(
 const SwitchAccount = Loader(
   lazy(() => import('../content/own/SwitchAccount'))
 );
+const SuperAdminCompanies = Loader(
+  lazy(() => import('../content/own/SuperAdmin/Companies'))
+);
+const SuperAdminCompanyDetail = Loader(
+  lazy(() => import('../content/own/SuperAdmin/CompanyDetail'))
+);
+
+const UserFeatureManagementWrapper = () => {
+  const { userId } = useParams();
+  console.log('UserFeatureManagementWrapper userId:', userId);
+  return <UserFeatureManagement userId={Number(userId)} />;
+};
+
 const appRoutes = [
   {
     path: 'settings',
@@ -169,6 +185,10 @@ const appRoutes = [
   {
     path: 'files',
     element: <Files />
+  },
+  {
+    path: 'superadmin/users/:userId/features',
+    element: <UserFeatureManagementWrapper />
   },
   {
     path: 'meters',
@@ -364,9 +384,17 @@ const appRoutes = [
       { path: 'preventive-maintenances', element: <Imports /> }
     ]
   },
-  { path: 'upgrade', element: <Upgrade /> },
+    { path: 'upgrade', element: <Upgrade /> },
   { path: 'downgrade', element: <Downgrade /> },
-  { path: 'switch-account', element: <SwitchAccount /> }
+  { path: 'switch-account', element: <SwitchAccount /> },
+  {
+    path: 'superadmin',
+    children: [
+      { path: 'companies', element: <SuperAdminCompanies /> },
+      { path: 'companies/:id', element: <SuperAdminCompanyDetail /> },
+      { path: 'user-features/:userId', element: <UserFeatureManagementWrapper /> }
+    ]
+  }
 ];
 
 export default appRoutes;

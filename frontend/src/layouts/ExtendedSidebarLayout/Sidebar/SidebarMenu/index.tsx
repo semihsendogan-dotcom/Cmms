@@ -9,9 +9,9 @@ import {
   styled,
   Typography
 } from '@mui/material';
-import { matchPath, useLocation } from 'react-router-dom';
+import { matchPath, useLocation, useNavigate } from "react-router-dom";
 import SidebarMenuItem from './item';
-import menuItems, { MenuItem } from './items';
+import menuItems, { MenuItem, superAdminMenuItems } from './items';
 import { useTranslation } from 'react-i18next';
 import useAuth from '../../../../hooks/useAuth';
 import { useEffect } from 'react';
@@ -247,15 +247,17 @@ function SidebarMenu() {
   const location = useLocation();
   const { t }: { t: any } = useTranslation();
   const dispatch = useDispatch();
-  const { hasViewPermission, hasFeature, user, company } = useAuth();
+  const { hasViewPermission, hasFeature, user, company, loginInternal } = useAuth();
+  const navigate = useNavigate();
   const { urgentCount } = useSelector((state) => state.workOrders);
   const { pendingCount } = useSelector((state) => state.requests);
   const TRIAL_DAYS = 15;
   const daysPassed = dayjs().diff(dayjs(company.createdAt), 'day');
   const daysLeft = TRIAL_DAYS - daysPassed;
+  const isSuperAdmin = user.role?.roleType === 'ROLE_SUPER_ADMIN';
 
   useEffect(() => {
-    if (user.id) {
+    if (user.id && !isSuperAdmin) {
       dispatch(getUrgentWorkOrdersCount());
       if (user.role.code !== 'REQUESTER') dispatch(getPendingRequestsCount());
     }
@@ -265,7 +267,7 @@ function SidebarMenu() {
       {isCloudVersion &&
         !company.demo &&
         user.ownsCompany &&
-        !company.subscription.activated && (
+        !company.subscription?.activated && (
           <Stack
             sx={{
               backgroundColor: 'rgb(51, 194, 255)',
@@ -282,7 +284,7 @@ function SidebarMenu() {
                 : `Your trial has ended`}
             </Typography>
             <Typography color={'white'} fontSize={'14px'}>
-              You are on the {company.subscription.subscriptionPlan.name} plan
+              You are on the {company.subscription?.subscriptionPlan?.name} plan
             </Typography>
             <Button
               component={Link}
@@ -296,8 +298,29 @@ function SidebarMenu() {
           </Stack>
         )}
       <>
-        {(user.superAccountRelations.length ? [] : menuItems)
-          .map((section, index) => {
+        {!isSuperAdmin && window.localStorage.getItem('superadminToken') && (
+          <Box p={2}>
+            <Button
+              fullWidth
+              variant="contained"
+              color="warning"
+              onClick={async () => {
+                const token = window.localStorage.getItem('superadminToken');
+                window.localStorage.removeItem('superadminToken');
+                await loginInternal(token);
+                navigate('/app/superadmin/companies');
+              }}
+            >
+              ← Superadmin'e Dön
+            </Button>
+          </Box>
+        )}
+        {(isSuperAdmin
+          ? superAdminMenuItems
+          : user.superAccountRelations.length
+          ? []
+          : menuItems
+        ).map((section, index) => {
             const sectionClone = { ...section };
             sectionClone.items = sectionClone.items.filter((item) => {
               const hasPermission = item.permission

@@ -9,7 +9,6 @@
             <column name="id" type="bigint" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
             </column>
-
             <column name="label" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
@@ -25,13 +24,8 @@
                              deleteCascade="true"/>
             </column>
             <column name="last_used" type="TIMESTAMP"/>
-
-            <column name="created_at" type="TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
-            <column name="updated_at" type="TIMESTAMP">
-                <constraints nullable="false"/>
-            </column>
+            <column name="created_at" type="TIMESTAMP"><constraints nullable="false"/></column>
+            <column name="updated_at" type="TIMESTAMP"><constraints nullable="false"/></column>
             <column name="created_by" type="BIGINT"/>
             <column name="updated_by" type="BIGINT"/>
         </createTable>
